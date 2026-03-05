@@ -1,0 +1,31 @@
+package dao;
+
+import modelo.Pais;
+
+public class PaisDao{
+
+    public List<Pais> listarTodos() {
+        String sql = "SELECT id, nome, area_km2, populacao, expectativa_vida, renda_percapita, densidade FROM pais ORDER BY nome";
+        List<Pais> lista = new ArrayList<>();
+
+        try (Connection con = ConnectionFactory.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(new Pais(
+                        rs.getInt("id"),
+                        rs.getString("nome"),
+                        rs.getLong("area_km2"),
+                        rs.getLong("populacao"),
+                        rs.getDouble("expectativa_vida"),
+                        rs.getDouble("renda_percapita"),
+                        rs.getDouble("densidade")
+                ));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao listar países: " + e.getMessage(), e);
+        }
+        return lista;
+    }
+}
