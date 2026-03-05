@@ -1,0 +1,118 @@
+package controle;
+
+import java.util.Collections;
+import java.util.Random;
+
+import dao.PaisDAO;
+import modelo.Pais;
+
+public class GameController {
+
+    public static class RoundOutcome {
+        public final Pais humano;
+        public final Pais maquina;
+
+        public final int pontosHumanoRodada;
+        public final int pontosMaquinaRodada;
+
+        public final boolean areaHumanoGanha;
+        public final boolean popHumanoGanha;
+        public final boolean vidaHumanoGanha;
+        public final boolean rendaHumanoGanha;
+        public final boolean densHumanoGanha;
+
+        public RoundOutcome(Pais humano, Pais maquina,
+                            int pontosHumanoRodada, int pontosMaquinaRodada,
+                            boolean areaHumanoGanha, boolean popHumanoGanha, boolean vidaHumanoGanha,
+                            boolean rendaHumanoGanha, boolean densHumanoGanha) {
+            this.humano = humano;
+            this.maquina = maquina;
+            this.pontosHumanoRodada = pontosHumanoRodada;
+            this.pontosMaquinaRodada = pontosMaquinaRodada;
+            this.areaHumanoGanha = areaHumanoGanha;
+            this.popHumanoGanha = popHumanoGanha;
+            this.vidaHumanoGanha = vidaHumanoGanha;
+            this.rendaHumanoGanha = rendaHumanoGanha;
+            this.densHumanoGanha = densHumanoGanha;
+        }
+    }
+
+    private final List<Pais> baralho;
+    private final Random random = new Random();
+
+    private int pontosHumanoTotal = 0;
+    private int pontosMaquinaTotal = 0;
+
+    public GameController() {
+        this.baralho = new PaisDAO().listarTodos();
+        if (baralho.size() < 5) {
+            throw new IllegalStateException("Cadastre pelo menos 5 países no banco.");
+        }
+        if (baralho.size() % 2 == 0) {
+            throw new IllegalStateException("O número de cartas deve ser ÍMPAR (para não empatar no final).");
+        }
+    }
+
+    public List<Pais> getCartasDisponiveis() {
+        return Collections.unmodifiableList(baralho);
+    }
+
+    public int getPontosHumanoTotal() { return pontosHumanoTotal; }
+    public int getPontosMaquinaTotal() { return pontosMaquinaTotal; }
+
+    public RoundOutcome jogarRodada(Pais cartaHumano) {
+        if (cartaHumano == null) throw new IllegalArgumentException("Selecione uma carta.");
+        if (!baralho.contains(cartaHumano)) throw new IllegalArgumentException("Carta indisponível.");
+
+        // Máquina sorteia uma carta diferente
+        Pais cartaMaquina;
+        do {
+            cartaMaquina = baralho.get(random.nextInt(baralho.size()));
+        } while (cartaMaquina.equals(cartaHumano));
+
+        // Comparar TODOS os atributos (maior = melhor)
+        boolean area  = cartaHumano.getAreaKm2() > cartaMaquina.getAreaKm2();
+        boolean pop   = cartaHumano.getPopulacao() > cartaMaquina.getPopulacao();
+        boolean vida  = cartaHumano.getExpectativaVida() > cartaMaquina.getExpectativaVida();
+        boolean renda = cartaHumano.getRendaPerCapita() > cartaMaquina.getRendaPerCapita();
+        boolean dens  = cartaHumano.getDensidade() > cartaMaquina.getDensidade(); // maior densidade vence
+
+        int humano = 0, maquina = 0;
+
+        if (cartaHumano.getAreaKm2() > cartaMaquina.getAreaKm2()) humano++;
+        else if (cartaHumano.getAreaKm2() < cartaMaquina.getAreaKm2()) maquina++;
+
+        if (cartaHumano.getPopulacao() > cartaMaquina.getPopulacao()) humano++;
+        else if (cartaHumano.getPopulacao() < cartaMaquina.getPopulacao()) maquina++;
+
+        if (cartaHumano.getExpectativaVida() > cartaMaquina.getExpectativaVida()) humano++;
+        else if (cartaHumano.getExpectativaVida() < cartaMaquina.getExpectativaVida()) maquina++;
+
+        if (cartaHumano.getRendaPerCapita() > cartaMaquina.getRendaPerCapita()) humano++;
+        else if (cartaHumano.getRendaPerCapita() < cartaMaquina.getRendaPerCapita()) maquina++;
+
+        if (cartaHumano.getDensidade() > cartaMaquina.getDensidade()) humano++;
+        else if (cartaHumano.getDensidade() < cartaMaquina.getDensidade()) maquina++;
+
+        // Remove as duas cartas usadas (desabilitar)
+        baralho.remove(cartaHumano);
+        baralho.remove(cartaMaquina);
+
+        pontosHumanoTotal += humano;
+        pontosMaquinaTotal += maquina;
+
+        return new RoundOutcome(cartaHumano, cartaMaquina, humano, maquina, area, pop, vida, renda, dens);
+    }
+
+    public boolean terminou() {
+        // termina quando não tem mais como jogar (0 ou 1 carta sobrando)
+        return baralho.size() <= 1;
+    }
+
+    public String vencedorFinal() {
+        if (!terminou()) return "Jogo em andamento";
+        if (pontosHumanoTotal > pontosMaquinaTotal) return "Você";
+        if (pontosMaquinaTotal > pontosHumanoTotal) return "Máquina";
+        return "Empate (muito raro com cartas ímpares)";
+    }
+}
